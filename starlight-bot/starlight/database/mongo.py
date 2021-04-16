@@ -44,10 +44,13 @@ class MongoStarlight:
         return x
 
     def find_delay(self, member_id=None):
+        x = []
         if member_id:
-            x = self._delay.find_one({"member_id": member_id})
+            y = self._delay.find({"member_id": member_id})
         else:
-            x = self._delay.find()
+            y = self._delay.find()
+        for i in y:
+            x.append(i)
         return x
 
     def remove_delay(self, member_id=None):
