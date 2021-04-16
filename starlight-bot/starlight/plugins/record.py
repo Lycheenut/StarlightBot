@@ -74,8 +74,8 @@ async def do_delay(session: CommandSession):
             await session.send('您没有补偿刀')
         else:
             db.insert_record({
-                "round": delay['round'],
-                "boss": delay['boss'],
+                "round": delay[0]['round'],
+                "boss": delay[0]['boss'],
                 "score": score,
                 "delay": True,
                 "member_id": member_id,
