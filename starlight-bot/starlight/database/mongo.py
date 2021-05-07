@@ -1,64 +1,66 @@
+from typing import Optional
+
 import pymongo
+from .doc_types import Player, Guild, Record
+from ..utilities.constants import Constants
 
 
 class MongoStarlight:
-    def __init__(self):
-        self._client = pymongo.MongoClient('mongodb://localhost:27017/')
+    def __init__(self, url):
+        self._client = pymongo.MongoClient(url)
         self._starlight = self._client['starlight']
+        self._players = self._starlight['players']
+        self._guilds = self._starlight['guilds']
+        self._accounts = self._starlight['accounts']
         self._records = self._starlight['records']
-        self._members = self._starlight['members']
-        self._delay = self._starlight['delay']
+        self._delays = self._starlight['delays']
 
-    def insert_record(self, record):
-        x = self._records.insert_one(record)
-        return x.inserted_id
+    def add_player(self, player_id: int, nickname: str):
+        return self._players.insert_one(Player(player_id, nickname).__dict__)
 
-    def insert_member(self, member):
-        x = self._members.insert_one(member)
-        return x.inserted_id
+    def change_nickname(self, player_id: int, nickname: str):
+        return self._players.update_one({"player_id": player_id}, {"nickname": nickname})
 
-    def insert_delay(self, delay):
-        x = self._delay.insert_one(delay)
-        return x.inserted_id
+    def remove_player(self, player_id: int):
+        return self._players.delete_many({"player_id": player_id})
 
-    def find_record(self, date=None, member_id=None, contain_delay=False):
-        find_filter = {}
-        if date:
-            find_filter['date'] = date
-        if member_id:
-            find_filter['member_id'] = member_id
-        if not contain_delay:
-            find_filter['delay'] = False
-
-        y = self._records.find(find_filter)
-        x = []
-        for i in y:
-            x.append(i)
-        return x
-
-    def find_member(self, member_id=None):
-        if member_id:
-            x = self._members.find({"member_id": member_id})[0]
+    def find_player(self, player_id: Optional[int]):
+        if player_id:
+            return self._players.find_one({"player_id": player_id})
         else:
-            x = self._members.find()
-        return x
+            players = []
+            for player in self._players.find():
+                players.append(player)
+            return players
 
-    def find_delay(self, member_id=None):
-        x = []
-        if member_id:
-            y = self._delay.find({"member_id": member_id})
-        else:
-            y = self._delay.find()
-        for i in y:
-            x.append(i)
-        return x
+    def add_record(self, game_id: int, record_time: str, round_no: int, boss_no: int, score: int):
+        return self._records.insert_one(Record(game_id, record_time, round_no, boss_no, score).__dict__)
 
-    def remove_delay(self, member_id=None):
-        if member_id:
-            x = self._delay.delete_many({"member_id": member_id})
-        else:
-            x = self._delay.delete_many()
-        return x
+    def modify_record(self, record_filter: dict, update: dict):
+        return self._records.update_one(record_filter, update)
+
+    def remove_record(self, record_filter: dict):
+        return self._records.delete_many(record_filter)
+
+    def find_record(self, record_filter: dict):
+        records = []
+        for record in self._records.find(record_filter):
+            records.append(record)
+        return records
+
+    def add_guild_member(self, game_id: int, guild_id: int):
+        guild_filter = {"guild_id": guild_id}
+        if self._guilds.count(guild_filter) == 0:
+            self._guilds.insert_one(Guild(guild_id).__dict__)
+        guild = self._guilds.find_one(guild_filter)
+        guild['members'].append(game_id)
+        return self._guilds.update_many(guild_filter, guild)
+
+    def remove_guild_member(self, game_id: int):
+
+        
 
 
-db = MongoStarlight()
+client_url = 'mongodb://' + Constants.HOST + ':' + str(Constants.MONGO_PORT) + '/'
+db = MongoStarlight(url=client_url)
+collections = {}

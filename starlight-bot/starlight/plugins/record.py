@@ -1,25 +1,22 @@
 from nonebot import on_command, CommandSession
-from ..database.mongo import db
+from ..database.mongo import collections
+from ..utilities.constants import Constants
 import time
 import re
 
 time.timezone = -43200
 
-USAGE = r'''使用方法：/指令 [参数]
- /t：查询今日出刀
- /r：查询今日余刀
- /a 周目 BOSS 得分 补偿刀回合 [-第几个号，省略则为1]：报刀 例：/a 2 3 3000000 0 -2
- /d 得分 [-第几个号，省略则为1]：补偿刀报刀 例：/d 342519'''
-DAILY_MAX_TIME = 3
+
+def _parse_args(args: str) -> list:
+    stripped_args = args.strip()
+    return stripped_args.split(' ')
 
 
-@on_command('help', aliases=('h', '帮助'))
-async def show_help(session: CommandSession):
-    await session.send(USAGE)
+def _quest_today(group_id: int) -> str:
+    db = collections[str(group_id)]
+    if not db:
+        return ''
 
-
-@on_command('today', aliases=('t', '今日', '统计'))
-async def quest_today(session: CommandSession):
     today = time.strftime('%Y-%m-%d')
     records = db.find_record(date=today, contain_delay=True)
     record_str = ''
@@ -35,11 +32,29 @@ async def quest_today(session: CommandSession):
         i += 1
     if record_str == '':
         record_str = '今日尚无人出刀'
-    await session.send(record_str.strip())
+
+    return record_str
 
 
-@on_command('rest', aliases=('r', '余刀', '剩刀'))
-async def quest_rest(session: CommandSession):
+@on_command('help', aliases=('h', '帮助'))
+async def show_help(session: CommandSession):
+    await session.send(Constants.USAGE_MESSAGE)
+
+
+@on_command('t', aliases=('today', '今日', '统计'))
+async def quest_today(session: CommandSession):
+    group_id = session.ctx['group_id']
+    if not group_id:
+        user_id = session.ctx['user_id']
+    record_str = _quest_today(group_id)
+    if not record_str:
+        await session.send(Constants.NOT_IN_GUILD_ERROR_MESSAGE)
+    else:
+        await session.send(record_str.strip())
+
+
+def _quest_rest(group_id: int) -> str:
+    db = collections[str(group_id)]
     members = db.find_member()
     rest_list = ''
     delay_list = ''
@@ -48,14 +63,20 @@ async def quest_rest(session: CommandSession):
         today = time.strftime('%Y-%m-%d')
         records = db.find_record(date=today, member_id=member_id)
         times = len(records)
-        if times < DAILY_MAX_TIME:
+        if times < Constants.DAILY_MAX_TIME:
             rest_list += member['nickname'] + '佬剩余' + str(DAILY_MAX_TIME - times) + '次\n'
         delay = db.find_delay(member_id=member_id)
         for i in delay:
             delay_list += member['nickname'] + '佬有' + str(i['turns']) + '回合补偿刀\n'
     if rest_list == '':
         rest_list = '今日出刀已完成'
-    await session.send((rest_list + delay_list).strip())
+    return rest_list + delay_list
+
+
+@on_command('r', aliases=('rest', '余刀', '剩刀'))
+async def quest_rest(session: CommandSession):
+
+    await session.send(''.strip())
 
 
 @on_command('delay', aliases=('d', '补偿'))
@@ -74,8 +95,8 @@ async def do_delay(session: CommandSession):
             await session.send('您没有补偿刀')
         else:
             db.insert_record({
-                "round": delay['round'],
-                "boss": delay['boss'],
+                "round": delay[0]['round'],
+                "boss": delay[0]['boss'],
                 "score": score,
                 "delay": True,
                 "member_id": member_id,
