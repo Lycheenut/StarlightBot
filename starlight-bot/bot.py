@@ -1,7 +1,6 @@
 from os import path
 import nonebot
 import config
-# from starlight.database.mongo import db
 
 
 if __name__ == '__main__':
