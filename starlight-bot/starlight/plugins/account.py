@@ -1,5 +1,6 @@
 from nonebot import on_command, CommandSession
 from ..utilities.constants import Constants
+from ..database.mongo import db
 import re
 
 
@@ -25,3 +26,10 @@ async def _(session: CommandSession):
     stripped_arg_text = session.current_arg_text.strip()
     if re.match(r'[0-9]{10}', stripped_arg_text):
         session.state['game_id'] = stripped_arg_text
+
+
+@on_command('l', aliases=('login', '登录'))
+async def login(session: CommandSession):
+    user_id = session.ctx['user_id']
+    # login
+    await session.send(Constants.LOGIN_SUCCESS_MSG)

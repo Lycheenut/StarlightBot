@@ -1,1 +1,1 @@
-__all__ = ['mongo']
+__all__ = ['mongo', 'doc_types']

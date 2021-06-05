@@ -2,7 +2,7 @@ from typing import Optional
 
 import pymongo
 from .doc_types import Player, Guild, Record
-from ..utilities.constants import Constants
+from ..config import HOST, MONGO_PORT
 
 
 class MongoStarlight:
@@ -18,8 +18,10 @@ class MongoStarlight:
     def add_player(self, player_id: int, nickname: str):
         return self._players.insert_one(Player(player_id, nickname).__dict__)
 
-    def change_nickname(self, player_id: int, nickname: str):
+    def modify_player(self, player_id: int, nickname: str):
         return self._players.update_one({"player_id": player_id}, {"nickname": nickname})
+
+    change_nickname = modify_player
 
     def remove_player(self, player_id: int):
         return self._players.delete_many({"player_id": player_id})
@@ -57,10 +59,16 @@ class MongoStarlight:
         return self._guilds.update_many(guild_filter, guild)
 
     def remove_guild_member(self, game_id: int):
+        account = self._accounts.find_one({"game_id": game_id})
+        if not account:
+            return None
+        guild_id = account['guild_id']
+        guild = self._guilds.find_one({"guild_id": guild_id})
+        members = guild['members'].remove(game_id)
+        self._accounts.update_one({"game_id": game_id}, {"guild_id": 0})
+        return self._guilds.update_one({"guild_id": guild_id}, {"members": members})
 
-        
 
-
-client_url = 'mongodb://' + Constants.HOST + ':' + str(Constants.MONGO_PORT) + '/'
+client_url = 'mongodb://' + HOST + ':' + str(MONGO_PORT) + '/'
 db = MongoStarlight(url=client_url)
 collections = {}

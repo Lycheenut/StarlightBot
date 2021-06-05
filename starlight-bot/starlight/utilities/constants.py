@@ -10,3 +10,4 @@ class Constants:
      /d 得分 [-第几个号，省略则为1]：补偿刀报刀 例：/d 342519'''
     BIND_ACCOUNT_SUCCESS_MSG = '绑定账号成功'
     ARGS_NOT_MATCH_ERROR_MSG = '您输入的参数格式有误'
+    LOGIN_SUCCESS_MSG = ''
